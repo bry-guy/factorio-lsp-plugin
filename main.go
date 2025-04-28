@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"log" // Import the log package
 	"os"
 	"path/filepath"
 
-	"github.com/bry-guy/factorio-lsp-plugin/pkg/api"
-	"github.com/bry-guy/factorio-lsp-plugin/pkg/generator"
-	"github.com/spf13/cobra"
+	"github.com/bry-guy/factorio-lsp-plugin/pkg/api"       // Corrected import path
+	"github.com/bry-guy/factorio-lsp-plugin/pkg/generator" // Corrected import path
+	"github.com/spf13/cobra"                               // Using Cobra for better CLI
 )
 
 var (
@@ -21,55 +21,64 @@ var rootCmd = &cobra.Command{
 	Short: "factorio-api-gen generates LuaLS definitions from Factorio API JSON",
 	Long:  `A tool to download the Factorio Runtime and Prototype API JSON files and generate Lua Language Server definition files.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Downloading and parsing Factorio API JSON...")
+		// Configure logging
+		log.SetOutput(os.Stdout)
+		log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-		// 1. Download and Parse JSON
+		log.Println("Starting Factorio API Generator...")
+		log.Printf("Runtime API URL: %s", runtimeURL)
+		log.Printf("Prototype API URL: %s", prototypeURL)
+		log.Printf("Output Directory: %s", outputDir)
+
+		// 1. Download and Parse Runtime API JSON
 		runtimeAPI := &api.API{}
+		log.Println("Initiating runtime API download and parsing...")
 		err := api.DownloadAndParseAPI(runtimeURL, runtimeAPI)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading/parsing runtime API: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Fatal error downloading/parsing runtime API from %s: %v", runtimeURL, err)
 		}
-		fmt.Printf("Successfully parsed runtime API from %s\n", runtimeURL)
+		log.Println("Runtime API download and parsing complete.")
 
+		// 2. Download and Parse Prototype API JSON
 		prototypeAPI := &api.API{}
+		log.Println("Initiating prototype API download and parsing...")
 		err = api.DownloadAndParseAPI(prototypeURL, prototypeAPI)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading/parsing prototype API: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Fatal error downloading/parsing prototype API from %s: %v", prototypeURL, err)
 		}
-		fmt.Printf("Successfully parsed prototype API from %s\n", prototypeURL)
+		log.Println("Prototype API download and parsing complete.")
 
-		// 2. Generate Lua Definitions
+		// 3. Generate Lua Definitions
+		log.Println("Initiating Lua definition generation...")
 		gen := generator.NewGenerator()
 		definitions, err := gen.GenerateDefinitions(runtimeAPI, prototypeAPI)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating Lua definitions: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Fatal error generating Lua definitions: %v", err)
 		}
-		fmt.Println("Successfully generated Lua definitions in memory.")
+		log.Println("Lua definition generation complete.")
 
-		// 3. Write Definitions to Files
+		// 4. Write Definitions to Files
+		log.Printf("Ensuring output directory exists: %s", outputDir)
 		err = os.MkdirAll(outputDir, 0755)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating output directory %s: %v\n", outputDir, err)
-			os.Exit(1)
+			log.Fatalf("Fatal error creating output directory %s: %v", outputDir, err)
 		}
-		fmt.Printf("Ensured output directory %s exists.\n", outputDir)
+		log.Println("Output directory is ready.")
 
+		log.Println("Writing generated definitions to files...")
 		for filename, content := range definitions {
 			outputPath := filepath.Join(outputDir, filename)
+			log.Printf("Writing file: %s", outputPath)
 			err := os.WriteFile(outputPath, []byte(content), 0644)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error writing definition file %s: %v\n", outputPath, err)
-				os.Exit(1)
+				log.Fatalf("Fatal error writing definition file %s: %v", outputPath, err)
 			}
-			fmt.Printf("Generated %s\n", outputPath)
+			log.Printf("Successfully wrote %s", outputPath)
 		}
 
-		fmt.Println("\nFactorio Lua definitions generated successfully.")
-		fmt.Printf("Generated files are located in: %s\n", outputDir)
-		fmt.Println("\nTo use these definitions with lua-language-server, configure your editor's settings to add this directory to the Lua.workspace.library setting.")
+		log.Println("\nFactorio Lua definitions generated successfully.")
+		log.Printf("Generated files are located in: %s", outputDir)
+		log.Println("\nTo use these definitions with lua-language-server, configure your editor's settings to add this directory to the Lua.workspace.library setting.")
 	},
 }
 
@@ -81,7 +90,8 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing command: %v\n", err)
+		// Cobra handles errors by printing to Stderr, but we can log here too if needed
+		// log.Printf("Error executing command: %v", err)
 		os.Exit(1)
 	}
 }

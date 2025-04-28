@@ -1,4 +1,4 @@
-module factorio-lsp-plugin
+module github.com/bry-guy/factorio-lsp-plugin
 
 go 1.23.6
 
